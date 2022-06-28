@@ -18,5 +18,5 @@ if get_option('enable-binaries')
      dependencies: fsmon_test_deps,
      include_directories: fsmon_include_dirs,
   )
-  test('fsmon-test',fsmon_test_exec, args: [meson.current_source_dir()])
+  #test('fsmon-test',fsmon_test_exec, args: [meson.current_source_dir()])
 endif

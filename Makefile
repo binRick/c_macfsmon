@@ -48,11 +48,14 @@ tidy: uncrustify uncrustify-clean fix-dbg
 pull:
 	@git pull
 nodemon:
-	@$(PASSH) -L .nodemon.log $(NODEMON) -V -I -i build \
-		-i submodules \
-		-w "*/*.c" -w "*/*.h" \
+	$(PASSH) $(NODEMON) -V -I -i build \
+		-w "submodules/meson_deps/meson/deps/*/meson.build" \
+		-w "*/*.c" \
+		-w "*/*.h" \
 		-w Makefile \
-		-w meson.build -w "*/meson.build" -w meson_options.txt \
+		-w meson.build \
+		-w "*/meson.build" \
+		-w meson_options.txt \
 		-e build,c,h,Makefile,txt \
-		-x env -- bash -c 'make||true'
+		-x env -- sh -c 'make||true'
 dev: nodemon
