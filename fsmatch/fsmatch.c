@@ -37,7 +37,7 @@
 #include <string.h>
 #include <stdio.h>
 
-#include "wildmatch.h"
+#include "fsmatch.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -1,2 +1,8 @@
-/build/
-/modules/
+/.vscode
+/build
+/.cache
+*.exe
+*.out
+submodules
+.nodemon.log
+.legacy
