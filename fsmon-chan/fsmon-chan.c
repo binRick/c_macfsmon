@@ -161,9 +161,7 @@ static int watchful_monitor_event_handler(const struct WatchfulEvent *ev, void *
     printf("[%s] @%lu \n\t|path:%s|\n\t|old path:%s|\n", event_type, EV_COPY->at, EV_COPY->path, EV_COPY->old_path ? EV_COPY->old_path : "(NONE)");
   }
 
-  int send_res = chan_send(ctx.chans[CHAN_EVENT_RECEIVED].chan, (void *)EV_COPY);
-
-  assert(send_res == 0);
+  assert(chan_send(ctx.chans[CHAN_EVENT_RECEIVED].chan, (void *)EV_COPY) == 0);
 
   if (FSMON_CHAN_DEBUG_MODE) {
     int chan_qty = chan_size(ctx.chans[CHAN_EVENT_RECEIVED].chan);
@@ -175,21 +173,16 @@ static int watchful_monitor_event_handler(const struct WatchfulEvent *ev, void *
 
 
 static int init_ctx_mutexes(){
-  int res = 0;
-
   for (int i = 0; i < MUTEXES_QTY; i++) {
     ctx.mutexes[i] = calloc(1, sizeof(pthread_mutex_t));
     assert(ctx.mutexes[i] != NULL);
-    res = pthread_mutex_init(ctx.mutexes[i], NULL);
-    assert(res == 0);
+    assert(pthread_mutex_init(ctx.mutexes[i], NULL) == 0);
   }
-  return(res);
+  return(0);
 }
 
 
 static int init_ctx_chans(){
-  int res = 0;
-
   for (int i = 0; i < CHANS_QTY; i++) {
     ctx.chans[i].chan = calloc(1, sizeof(chan_t));
     assert(ctx.chans[i].chan != NULL);
@@ -197,13 +190,11 @@ static int init_ctx_chans(){
     assert(ctx.chans[i].chan != NULL);
   }
 
-  return(res);
+  return(0);
 }
 
 
 static int init_ctx_paths(){
-  int res = 0;
-
   ctx.monitored_paths_v = vector_new();
   assert(ctx.monitored_paths_v != NULL);
 
@@ -211,28 +202,25 @@ static int init_ctx_paths(){
   assert(ctx.excluded_paths_v != NULL);
 
 
-  return(res);
+  return(0);
 }
 
 
 static int init_ctx_threads(){
-  int res = 0;
-
   for (int i = 0; i < THREADS_QTY; i++) {
     ctx.threads[i] = calloc(1, sizeof(pthread_t));
     assert(ctx.threads[i] != NULL);
   }
 
-  res = pthread_create(
-    ctx.threads[THREAD_RECEIVER],
-    NULL,
-    ctx.worker_event_handlers[WORKER_EVENT_TYPE_RECEIVER].event_thread_fxn,
-    (void *)NULL
-    );
-  assert(res == 0);
+  assert(
+    pthread_create(
+      ctx.threads[THREAD_RECEIVER],
+      NULL,
+      ctx.worker_event_handlers[WORKER_EVENT_TYPE_RECEIVER].event_thread_fxn,
+      (void *)NULL
+      ) == 0);
 
-
-  return(res);
+  return(0);
 }
 
 
@@ -258,19 +246,15 @@ int fsmon_monitor_stop(){
 
 
 int fsmon_monitor_start(){
-  int res = 0;
-
   ctx.watchful_monitor = watchful_monitor_create(
     &watchful_fsevents, (char *)vector_get(ctx.monitored_paths_v, 0), (int)vector_size(ctx.excluded_paths_v),
     (const char **)vector_to_array(ctx.excluded_paths_v), WATCHFUL_EVENT_ALL, ctx.watchful_monitor_delay, (ctx.watchful_monitor_event_callback), (void *)NULL
     );
   assert(ctx.watchful_monitor != NULL);
-
-  res = watchful_monitor_start(ctx.watchful_monitor);
-  assert(res == 0);
+  assert(watchful_monitor_start(ctx.watchful_monitor) == 0);
   assert(ctx.watchful_monitor->is_watching == true);
 
-  return(res);
+  return(0);
 }
 
 
@@ -283,27 +267,15 @@ int fsmon_monitor_path(const char *MONITORED_DIRECTORY){
 
 
 int fsmon_init(fs_event_handler *CLIENT_EVENT_HANDLER, const char *PATH){
-  int res = -1;
-
+  assert(CLIENT_EVENT_HANDLER != NULL);
   ctx.client_event_handler = (CLIENT_EVENT_HANDLER);
-  assert(ctx.client_event_handler != NULL);
+  assert(init_ctx_paths() == 0);
+  assert(init_ctx_mutexes() == 0);
+  assert(init_ctx_chans() == 0);
+  assert(init_ctx_threads() == 0);
+  assert(fsmon_monitor_path(PATH) == 0);
 
-  res = init_ctx_paths();
-  assert(res == 0);
-
-  res = init_ctx_mutexes();
-  assert(res == 0);
-
-  res = init_ctx_chans();
-  assert(res == 0);
-
-  res = init_ctx_threads();
-  assert(res == 0);
-
-  res = fsmon_monitor_path(PATH);
-  assert(res == 0);
-
-  return(res);
+  return(0);
 }
 
 
