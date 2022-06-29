@@ -28,5 +28,5 @@ if get_option('enable-binaries')
      dependencies: fsmon_chan_test_deps,
      include_directories: fsmon_include_dirs,
   )
-  test('fsmon-chan-test',fsmon_chan_test_exec, args: [])
+  test('fsmon-chan-test',fsmon_chan_test_exec, args: ['-v','-a'])
 endif

@@ -33,7 +33,7 @@ do-meson:
 do-build:
 	@eval cd . && { ninja -C build; }
 do-test:
-	@eval cd . && { ninja test -C build -v; }
+	@eval cd . && { meson test -C build -v; }
 build: do-meson do-build
 uncrustify:
 	@$(UNCRUSTIFY) -c etc/uncrustify.cfg --replace $(TIDIED_FILES) 
@@ -52,6 +52,7 @@ nodemon:
 		-w "submodules/meson_deps/meson/deps/*/meson.build" \
 		-w "*/*.c" \
 		-w "*/*.h" \
+		-w "fsmon*/*.c" \
 		-w Makefile \
 		-w meson.build \
 		-w "*/meson.build" \
