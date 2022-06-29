@@ -16,6 +16,7 @@ fsmon_chan_test_deps = [
   parson_dep,
   timestamp_dep,
   c_vector_dep,
+  timestamp_dep,
   dbg_dep,
   c_stringfn_dep,
   c_string_buffer_dep,
