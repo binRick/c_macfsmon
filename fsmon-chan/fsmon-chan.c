@@ -26,17 +26,21 @@ typedef int (watchful_monitor_event_callback_t)(const struct WatchfulEvent *ev, 
 typedef enum {
   CALLBACK_MUTEX,
   CLIENT_EVENT_MUTEX,
-  MUTEXES_QTY } mutex_type_id_t;
+  MUTEXES_QTY
+} mutex_type_id_t;
 typedef enum {
   THREAD_RECEIVER,
-  THREADS_QTY } worker_thread_type_id_t;
+  THREADS_QTY
+} worker_thread_type_id_t;
 typedef enum {
   WORKER_EVENT_TYPE_RECEIVER,
-  WORKER_EVENT_TYPES_QTY } worker_event_type_id_t;
+  WORKER_EVENT_TYPES_QTY
+} worker_event_type_id_t;
 typedef enum {
   CHAN_EVENT_RECEIVED,
   CHAN_EVENTS_DONE,
-  CHANS_QTY } chan_type_id_t;
+  CHANS_QTY
+} chan_type_id_t;
 //////////////////////////////////////////////
 struct chan_type_t {
   const char           *name;
@@ -51,14 +55,15 @@ struct worker_event_handler_t {
 };
 //////////////////////////////////////////////////////////////////////////////////
 static void *event_receiver(void *);
-static int 
-    init_ctx_chans(),
-    init_ctx_threads(),
-    init_ctx_paths(),
-    init_ctx_mutexes(),
-    watchful_monitor_event_handler(const struct WatchfulEvent *ev, void *),
-    free_workers(),
-    free_worker(const int WORKER_INDEX);
+static int
+init_ctx_chans(),
+init_ctx_threads(),
+init_ctx_paths(),
+init_ctx_mutexes(),
+watchful_monitor_event_handler(const struct WatchfulEvent *ev, void *),
+free_workers(),
+free_worker(const int WORKER_INDEX);
+
 //////////////////////////////////////////////////////////////////////////////////
 struct ctx_t {
   volatile size_t                   processed_events_qty, received_events_qty;
@@ -171,6 +176,7 @@ static int watchful_monitor_event_handler(const struct WatchfulEvent *ev, void *
 
 static int init_ctx_mutexes(){
   int res = 0;
+
   for (int i = 0; i < MUTEXES_QTY; i++) {
     ctx.mutexes[i] = calloc(1, sizeof(pthread_mutex_t));
     assert(ctx.mutexes[i] != NULL);
@@ -179,6 +185,7 @@ static int init_ctx_mutexes(){
   }
   return(res);
 }
+
 
 static int init_ctx_chans(){
   int res = 0;
@@ -196,6 +203,7 @@ static int init_ctx_chans(){
 
 static int init_ctx_paths(){
   int res = 0;
+
   ctx.monitored_paths_v = vector_new();
   assert(ctx.monitored_paths_v != NULL);
 
@@ -205,6 +213,7 @@ static int init_ctx_paths(){
 
   return(res);
 }
+
 
 static int init_ctx_threads(){
   int res = 0;
@@ -241,6 +250,7 @@ char **fsmon_monitored_paths(){
 
 int fsmon_monitor_stop(){
   int res = 0;
+
   if (FSMON_CHAN_DEBUG_MODE) {
   }
   return(res);
