@@ -48,11 +48,12 @@ tidy: uncrustify uncrustify-clean fix-dbg
 pull:
 	@git pull
 nodemon:
-	$(PASSH) $(NODEMON) -V -I -i build \
+	$(PASSH) $(NODEMON) -I -i build \
 		-w "submodules/meson_deps/meson/deps/*/meson.build" \
 		-w "*/*.c" \
 		-w "*/*.h" \
 		-w "fsmon*/*.c" \
+		-w "fsmon-chan/*.c" \
 		-w Makefile \
 		-w meson.build \
 		-w "*/meson.build" \

@@ -11,6 +11,7 @@ fsmon_chan_deps = [
   chan_dep,
   fsmon_dep,
   ansi_codes_dep,
+  generic_print_dep,
   logh_dep,
   ms_dep,
   timestamp_dep,

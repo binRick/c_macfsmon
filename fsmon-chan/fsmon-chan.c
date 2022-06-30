@@ -17,7 +17,8 @@
 #include "chan/src/chan.h"
 #include "chan/src/queue.h"
 #include "fsmon-chan.h"
-size_t CHAN_EVENT_RECEIVED_SELECTS_QTY = 0;
+#include "generic-print/print.h"
+#include "timestamp/timestamp.h"
 //////////////////////////////////////////////////////////////////////////////////
 typedef int (watchful_monitor_event_callback_t)(const struct WatchfulEvent *ev, void *ctx);
 //////////////////////////////////////////////////////////////////////////////////
@@ -33,7 +34,8 @@ init_ctx_paths(),
 init_ctx_mutexes(),
 watchful_monitor_event_handler(const struct WatchfulEvent *ev, void *),
 free_workers(),
-free_worker(const int WORKER_INDEX);
+free_worker(const int WORKER_INDEX),
+start_ctx_receiver_thread();
 
 //////////////////////////////////////////////////////////////////////////////////
 struct ctx_t {
@@ -44,8 +46,9 @@ struct ctx_t {
   enum {
     CALLBACK_MUTEX,
     CLIENT_EVENT_MUTEX,
-    CHAN_EVENT_RECEIVED_SELECTS_QTY_MUTEX,
     EVENTS_DONE_MUTEX,
+    STATS_MUTEX,
+    WATCHFUL_MUTEX,
     MUTEXES_QTY,
   } mutex_type_id_t;
   struct chan_type_t {
@@ -58,7 +61,8 @@ struct ctx_t {
     size_t                    size;
     const enum chan_type_id_t type_id;
     chan_t                    *chan;
-  } chan_type_t;
+  }             chan_type_t;
+  fsmon_stats_t stats;
   struct worker_event_handler_t {
     enum {
       WORKER_EVENT_TYPE_RECEIVER,
@@ -68,7 +72,6 @@ struct ctx_t {
     const enum chan_type_id_t chan_type_id;
     void                      *(*event_thread_fxn)(void *);
   }                                 worker_event_type_id_t;
-  volatile size_t                   processed_events_qty, received_events_qty;
   struct Vector                     *monitored_paths_v, *excluded_paths_v;
   double                            watchful_monitor_delay;
   bool                              is_done;
@@ -81,26 +84,36 @@ struct ctx_t {
   chan_type_t                       chan_types[CHANS_QTY];
   chan_t                            *chans[CHANS_QTY];
   void                              *client_context;
-} static ctx = {
-  .processed_events_qty            = 0,                               .received_events_qty = 0,
-  .monitored_paths_v               = NULL,                            .excluded_paths_v    = NULL,
-  .watchful_monitor_delay          = 0,                               .is_done             = false,
+  unsigned long long                started_ts;
+};
+//static ctx_t ctx = { NULL };
+
+static ctx_t ctx = {
+  .monitored_paths_v               = NULL,                            .excluded_paths_v = NULL,
+  .watchful_monitor_delay          = 0,                               .is_done          = false,
   .watchful_monitor_event_callback = &watchful_monitor_event_handler,
   .watchful_monitor                = NULL,
   .client_event_handler            = NULL,
   .mutexes                         = NULL,
   .client_context                  = NULL,
   .threads                         = NULL,
+  .stats                           = {
+    .chan_selects_qty     = 0,
+    .duration_ms          = 0,
+    .processed_events_qty = 0,
+    .received_events_qty  = 0,
+    .started_ts           = 0,
+  },
   .chans                           = {
     [CHAN_EVENT_RECEIVED] = NULL,
     [CHAN_EVENTS_DONE]    = NULL,
   },
   .chan_types                      = {
-    [CHAN_EVENT_RECEIVED] = { .name= "events_received", .type_id                               = CHAN_EVENT_RECEIVED, .chan                = NULL, .size = DEFAULT_BUFFERED_FILESYSTEM_EVENTS_QTY },
-    [CHAN_EVENTS_DONE]    = { .name = "events_done",    .type_id                               = CHAN_EVENTS_DONE,    .chan                = NULL, .size = 0                                      },
+    [CHAN_EVENT_RECEIVED] = { .name= "events_received", .type_id                            = CHAN_EVENT_RECEIVED, .chan                = NULL, .size = DEFAULT_BUFFERED_FILESYSTEM_EVENTS_QTY },
+    [CHAN_EVENTS_DONE]    = { .name = "events_done",    .type_id                            = CHAN_EVENTS_DONE,    .chan                = NULL, .size = 0                                      },
   },
   .worker_event_handlers           = {
-    [WORKER_EVENT_TYPE_RECEIVER] = { .name= "receiver", .chan_type_id                             = CHAN_EVENT_RECEIVED, .event_thread_fxn = event_receiver },
+    [WORKER_EVENT_TYPE_RECEIVER] = { .name= "receiver", .chan_type_id                          = CHAN_EVENT_RECEIVED, .event_thread_fxn = event_receiver },
   },
 };
 
@@ -109,75 +122,49 @@ struct ctx_t {
 
 
 static void *event_receiver(void *NONE){
-  pthread_mutex_lock(ctx.mutexes[EVENTS_DONE_MUTEX]);
-  bool is_done = ctx.is_done;
-  pthread_mutex_unlock(ctx.mutexes[EVENTS_DONE_MUTEX]);
   void *EV;
-  while (is_done == false) {
+
+  while (true) {
+    if (FSMON_CHAN_DEBUG_MODE) {
+      PRINT("event_receiver>  checking is_done");
+    }
+    pthread_mutex_lock(ctx.mutexes[EVENTS_DONE_MUTEX]);
+    bool is_done = ctx.is_done;
+    pthread_mutex_unlock(ctx.mutexes[EVENTS_DONE_MUTEX]);
+    if (FSMON_CHAN_DEBUG_MODE) {
+      PRINT("event_receiver>  checked is_done:", is_done);
+    }
+    if (is_done) {
+      break;
+    }
+    if (FSMON_CHAN_DEBUG_MODE) {
+      PRINT("receiving on events chan.........");
+    }
     chan_recv(ctx.chans[CHAN_EVENT_RECEIVED], &EV);
     if (FSMON_CHAN_DEBUG_MODE) {
       printf("received message! |path:%s|old_path:%s|at:%lu|type:%d|\n",
              (char *)((struct WatchfulEvent *)(EV))->path, (char *)((struct WatchfulEvent *)(EV))->old_path, (time_t)((struct WatchfulEvent *)(EV))->at, (int)((struct WatchfulEvent *)(EV))->type);
     }
-    pthread_mutex_lock(ctx.mutexes[CLIENT_EVENT_MUTEX]);
-    {
+    if (EV != NULL) {
+      pthread_mutex_lock(ctx.mutexes[CLIENT_EVENT_MUTEX]);
       ctx.client_event_handler((char *)((struct WatchfulEvent *)(EV))->path, (int)((struct WatchfulEvent *)(EV))->type, (void *)ctx.client_context);
       free(EV);
-      ctx.processed_events_qty++;
+      pthread_mutex_unlock(ctx.mutexes[CLIENT_EVENT_MUTEX]);
+
+      pthread_mutex_lock(ctx.mutexes[STATS_MUTEX]);
+      ctx.stats.processed_events_qty++;
+      pthread_mutex_unlock(ctx.mutexes[STATS_MUTEX]);
     }
-    pthread_mutex_unlock(ctx.mutexes[CLIENT_EVENT_MUTEX]);
-    if (FSMON_CHAN_DEBUG_MODE) {
-      printf("**DISPATCHED MSG TO EVENT HANDLER**\n");
-    }
-    pthread_mutex_lock(ctx.mutexes[CHAN_EVENT_RECEIVED_SELECTS_QTY_MUTEX]);
-    CHAN_EVENT_RECEIVED_SELECTS_QTY++;
-    pthread_mutex_unlock(ctx.mutexes[CHAN_EVENT_RECEIVED_SELECTS_QTY_MUTEX]);
-    pthread_mutex_lock(ctx.mutexes[EVENTS_DONE_MUTEX]);
-    is_done = ctx.is_done;
-    pthread_mutex_unlock(ctx.mutexes[EVENTS_DONE_MUTEX]);
   }
-  /*
-   *
-   * while (is_done == false) {
-   * if (FSMON_CHAN_DEBUG_MODE) {
-   *  fprintf(stdout, ">EVENT RECEIVER> |name:%s|type:%d|qty:%d/%d|....................\n",
-   *          ctx.worker_event_handlers[WORKER_EVENT_TYPE_RECEIVER].name, ctx.worker_event_handlers[WORKER_EVENT_TYPE_RECEIVER].chan_type_id,
-   *          chan_size(ctx.chans[CHAN_EVENT_RECEIVED]), ctx.chans[CHAN_EVENT_RECEIVED]->queue->capacity);
-   * }
-   *
-   * switch (chan_select(ctx.chans, CHANS_QTY, &EV, NULL, 0, NULL)){
-   * case CHAN_EVENTS_DONE:
-   *    printf("DONE SIGNAL!\n");
-   *    pthread_mutex_lock(ctx.mutexes[EVENTS_DONE_MUTEX]);
-   *    ctx.is_done = true;
-   *    pthread_mutex_unlock(ctx.mutexes[EVENTS_DONE_MUTEX]);
-   *  break;
-   * case CHAN_EVENT_RECEIVED:
-   *  if (FSMON_CHAN_DEBUG_MODE) {
-   *    printf("received message! |path:%s|old_path:%s|at:%lu|type:%d|\n",
-   *           (char *)((struct WatchfulEvent *)(EV))->path, (char *)((struct WatchfulEvent *)(EV))->old_path, (time_t)((struct WatchfulEvent *)(EV))->at, (int)((struct WatchfulEvent *)(EV))->type);
-   *  }
-   *  pthread_mutex_lock(ctx.mutexes[CLIENT_EVENT_MUTEX]);
-   *  {
-   *    ctx.client_event_handler((char *)((struct WatchfulEvent *)(EV))->path, (int)((struct WatchfulEvent *)(EV))->type);
-   *    free(EV);
-   *    ctx.processed_events_qty++;
-   *  }
-   *  pthread_mutex_unlock(ctx.mutexes[CLIENT_EVENT_MUTEX]);
-   *  if (FSMON_CHAN_DEBUG_MODE) {
-   *    printf("**DISPATCHED MSG TO EVENT HANDLER**\n");
-   *  }
-   *  break;
-   * }
-   * pthread_mutex_lock(ctx.mutexes[CHAN_EVENT_RECEIVED_SELECTS_QTY_MUTEX]);
-   * CHAN_EVENT_RECEIVED_SELECTS_QTY++;
-   * pthread_mutex_unlock(ctx.mutexes[CHAN_EVENT_RECEIVED_SELECTS_QTY_MUTEX]);
-   * pthread_mutex_lock(ctx.mutexes[EVENTS_DONE_MUTEX]);
-   * is_done = ctx.is_done;
-   * pthread_mutex_unlock(ctx.mutexes[EVENTS_DONE_MUTEX]);
-   * }
-   */
+
   printf("event receiver end\n");
+  if (FSMON_CHAN_DEBUG_MODE) {
+    PRINT("SENDING DONE SIGNAL");
+  }
+  chan_send(ctx.chans[CHAN_EVENTS_DONE], (void *)0);
+  if (FSMON_CHAN_DEBUG_MODE) {
+    PRINT("SENT DONE SIGNAL");
+  }
   return(NULL);
 } /* event_receiver */
 
@@ -188,7 +175,9 @@ static int watchful_monitor_event_handler(const struct WatchfulEvent *ev, void *
 
   pthread_mutex_lock(ctx.mutexes[CALLBACK_MUTEX]);
   {
-    ctx.received_events_qty++;
+    pthread_mutex_lock(ctx.mutexes[STATS_MUTEX]);
+    ctx.stats.received_events_qty++;
+    pthread_mutex_unlock(ctx.mutexes[STATS_MUTEX]);
     switch (ev->type) {
     case WATCHFUL_EVENT_MODIFIED: sprintf(event_type, "MODIFIED"); break;
     case WATCHFUL_EVENT_CREATED: sprintf(event_type, "CREATED"); break;
@@ -211,11 +200,6 @@ static int watchful_monitor_event_handler(const struct WatchfulEvent *ev, void *
 
   assert(chan_send(ctx.chans[CHAN_EVENT_RECEIVED], (void *)EV_COPY) == 0);
 
-  if (FSMON_CHAN_DEBUG_MODE) {
-    int chan_qty = chan_size(ctx.chans[CHAN_EVENT_RECEIVED]);
-    printf("SENT '%s@%lu' EVENT TO CHAN! :: qty2=%d\n", event_type, EV_COPY->at, chan_qty);
-  }
-
   return(0);
 }
 
@@ -225,6 +209,22 @@ static int init_ctx_mutexes(){
     ctx.mutexes[i] = calloc(1, sizeof(pthread_mutex_t));
     assert(ctx.mutexes[i] != NULL);
     assert(pthread_mutex_init(ctx.mutexes[i], NULL) == 0);
+  }
+  return(0);
+}
+
+
+static int close_ctx_chans(){
+  for (int i = 0; i < CHANS_QTY; i++) {
+    chan_close(ctx.chans[i]);
+  }
+  return(0);
+}
+
+
+static int release_ctx_chans(){
+  for (int i = 0; i < CHANS_QTY; i++) {
+    chan_dispose(ctx.chans[i]);
   }
   return(0);
 }
@@ -254,12 +254,7 @@ static int init_ctx_paths(){
 }
 
 
-static int init_ctx_threads(){
-  for (int i = 0; i < THREADS_QTY; i++) {
-    ctx.threads[i] = calloc(1, sizeof(pthread_t));
-    assert(ctx.threads[i] != NULL);
-  }
-
+static int start_ctx_receiver_thread(){
   assert(
     pthread_create(
       ctx.threads[THREAD_RECEIVER],
@@ -268,6 +263,25 @@ static int init_ctx_threads(){
       (void *)NULL
       ) == 0);
 
+  return(0);
+}
+
+
+static int free_worker(const int WORKER_INDEX){
+  return(0);
+}
+
+
+static int init_ctx_threads(){
+  for (int i = 0; i < THREADS_QTY; i++) {
+    ctx.threads[i] = calloc(1, sizeof(pthread_t));
+    assert(ctx.threads[i] != NULL);
+  }
+  return(0);
+}
+
+
+static int free_workers(){
   return(0);
 }
 
@@ -287,20 +301,89 @@ char **fsmon_monitored_paths(){
 int fsmon_monitor_stop(){
   int res = 0;
 
+  if (FSMON_CHAN_DEBUG_MODE) {
+    PRINT("stopping watchful_monitor");
+  }
+  pthread_mutex_lock(ctx.mutexes[WATCHFUL_MUTEX]);
+  assert(watchful_monitor_stop(ctx.watchful_monitor) == 0);
+  if (FSMON_CHAN_DEBUG_MODE) {
+    PRINT("stopped watchful_monitor");
+  }
+  pthread_mutex_unlock(ctx.mutexes[WATCHFUL_MUTEX]);
+
+  if (FSMON_CHAN_DEBUG_MODE) {
+    PRINT("setting is_done to true");
+  }
   pthread_mutex_lock(ctx.mutexes[EVENTS_DONE_MUTEX]);
-  res = watchful_monitor_stop(ctx.watchful_monitor);
-  assert(res == 0);
   ctx.is_done = true;
   pthread_mutex_unlock(ctx.mutexes[EVENTS_DONE_MUTEX]);
-  //void *MSG;
-  //assert(chan_recv(ctx.chans[CHAN_EVENTS_DONE], &MSG) == 0);
   if (FSMON_CHAN_DEBUG_MODE) {
+    PRINT("set is_done to true");
+  }
+
+  chan_send(ctx.chans[CHAN_EVENT_RECEIVED], (void *)NULL);
+
+  void *tmp;
+
+  if (FSMON_CHAN_DEBUG_MODE) {
+    PRINT("waiting for done event");
+  }
+  chan_recv(ctx.chans[CHAN_EVENTS_DONE], &tmp);
+  if (FSMON_CHAN_DEBUG_MODE) {
+    PRINT("waited for done event");
+  }
+
+  if (FSMON_CHAN_DEBUG_MODE) {
+    PRINT("closing");
+  }
+  assert(close_ctx_chans() == 0);
+  if (FSMON_CHAN_DEBUG_MODE) {
+    PRINT("closed");
+  }
+  assert(release_ctx_chans() == 0);
+  if (FSMON_CHAN_DEBUG_MODE) {
+    PRINT("released");
+  }
+
+  pthread_mutex_lock(ctx.mutexes[WATCHFUL_MUTEX]);
+  if (FSMON_CHAN_DEBUG_MODE) {
+    PRINT("destroying watchful");
+  }
+  watchful_monitor_destroy(ctx.watchful_monitor);
+  if (FSMON_CHAN_DEBUG_MODE) {
+    PRINT("destroyed watchful");
+  }
+  ctx.client_event_handler = NULL;
+  ctx.client_context       = NULL;
+  pthread_mutex_unlock(ctx.mutexes[WATCHFUL_MUTEX]);
+
+  pthread_mutex_lock(ctx.mutexes[STATS_MUTEX]);
+  ctx.stats.ended_ts    = timestamp();
+  ctx.stats.duration_ms = ctx.stats.ended_ts - ctx.stats.started_ts;
+  pthread_mutex_unlock(ctx.mutexes[STATS_MUTEX]);
+
+
+  if (FSMON_CHAN_DEBUG_MODE) {
+    PRINT("fsmon_monitor_stop OK");
   }
   return(res);
-}
+} /* fsmon_monitor_stop */
 
 
 int fsmon_monitor_start(){
+  pthread_mutex_lock(ctx.mutexes[EVENTS_DONE_MUTEX]);
+  ctx.is_done = false;
+  pthread_mutex_unlock(ctx.mutexes[EVENTS_DONE_MUTEX]);
+
+  pthread_mutex_lock(ctx.mutexes[STATS_MUTEX]);
+  ctx.stats.chan_selects_qty     = 0;
+  ctx.stats.received_events_qty  = 0;
+  ctx.stats.ended_ts             = 0;
+  ctx.stats.processed_events_qty = 0;
+  ctx.stats.started_ts           = timestamp();
+  pthread_mutex_unlock(ctx.mutexes[STATS_MUTEX]);
+
+  pthread_mutex_lock(ctx.mutexes[WATCHFUL_MUTEX]);
   ctx.watchful_monitor = watchful_monitor_create(
     &watchful_fsevents, (char *)vector_get(ctx.monitored_paths_v, 0), (int)vector_size(ctx.excluded_paths_v),
     (const char **)vector_to_array(ctx.excluded_paths_v), WATCHFUL_EVENT_ALL, ctx.watchful_monitor_delay, (ctx.watchful_monitor_event_callback), (void *)NULL
@@ -308,8 +391,27 @@ int fsmon_monitor_start(){
   assert(ctx.watchful_monitor != NULL);
   assert(watchful_monitor_start(ctx.watchful_monitor) == 0);
   assert(ctx.watchful_monitor->is_watching == true);
+  pthread_mutex_unlock(ctx.mutexes[WATCHFUL_MUTEX]);
 
   return(0);
+}
+
+
+fsmon_stats_t *fsmon_stats(){
+  fsmon_stats_t *stats = calloc(1, sizeof(fsmon_stats));
+
+  return(stats);
+
+  pthread_mutex_lock(ctx.mutexes[STATS_MUTEX]);
+  ////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////
+  stats->processed_events_qty = ctx.stats.processed_events_qty;
+  stats->received_events_qty  = ctx.stats.received_events_qty;
+  stats->duration_ms          = ctx.stats.duration_ms;
+  stats->chan_selects_qty     = ctx.stats.chan_selects_qty;
+  pthread_mutex_unlock(ctx.mutexes[STATS_MUTEX]);
+
+  return(stats);
 }
 
 
@@ -322,25 +424,32 @@ int fsmon_monitor_path(const char *MONITORED_DIRECTORY){
 
 
 int fsmon_init(fs_event_handler *CLIENT_EVENT_HANDLER, const char *PATH, void *CLIENT_CONTEXT){
+  bool is_locked = false;
+
+  if (FSMON_CHAN_DEBUG_MODE) {
+    PRINT("locking...");
+  }
+  if (ctx.mutexes[WATCHFUL_MUTEX] != NULL) {
+    is_locked = true;
+    pthread_mutex_lock(ctx.mutexes[WATCHFUL_MUTEX]);
+  }
   assert(CLIENT_EVENT_HANDLER != NULL);
   ctx.client_event_handler = (CLIENT_EVENT_HANDLER);
   ctx.client_context       = CLIENT_CONTEXT;
   assert(init_ctx_paths() == 0);
-  assert(init_ctx_mutexes() == 0);
+  if (is_locked == false) {
+    assert(init_ctx_mutexes() == 0);
+  }
   assert(init_ctx_chans() == 0);
-  assert(init_ctx_threads() == 0);
+  if (is_locked == false) {
+    assert(init_ctx_threads() == 0);
+  }
   assert(fsmon_monitor_path(PATH) == 0);
+  start_ctx_receiver_thread();
+  if (is_locked) {
+    pthread_mutex_unlock(ctx.mutexes[WATCHFUL_MUTEX]);
+  }
 
-  return(0);
-}
-
-
-static int free_worker(const int WORKER_INDEX){
-  return(0);
-}
-
-
-static int free_workers(){
   return(0);
 }
 
