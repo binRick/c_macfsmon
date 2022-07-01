@@ -21,7 +21,7 @@ struct TEST_CASE_T {
     .MONITORED_PATHS       = "/", .MONITORED_PATHS_QTY = 1,
     .RECEIVED_EVENTS_QTY   = 0, .mu = NULL, .MSG = NULL,
     .FSMON_STATS           = NULL,
-    .MONITORED_DURATION_MS = 2000,
+    .MONITORED_DURATION_MS = 10000,
   },
 };
 

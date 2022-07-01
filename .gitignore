@@ -7,3 +7,4 @@ submodules
 .nodemon.log
 .legacy
 subprojects
+.make-latest-log-summary.txt
