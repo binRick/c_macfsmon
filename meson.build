@@ -1,4 +1,4 @@
-project('c_fsmon', ['c'],default_options:['warning_level=0','c_std=gnu99'])
+project('c_macfsmon', ['c'],default_options:['warning_level=0','c_std=gnu99'],version: '0.0.1')
 cc = meson.get_compiler('c')
 pwd = meson.current_source_dir()
 meson_deps_dir = join_paths(meson.current_source_dir(),'submodules/meson_deps')

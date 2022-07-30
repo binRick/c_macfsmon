@@ -1,4 +1,3 @@
-#pragma once
 //////////////////////////////////////////////
 #define FSMON_CHAN_DEBUG_MODE                     false
 #define DEFAULT_BUFFERED_FILESYSTEM_EVENTS_QTY    50
@@ -86,7 +85,6 @@ struct ctx_t {
   void                              *client_context;
   unsigned long long                started_ts;
 };
-//static ctx_t ctx = { NULL };
 
 static ctx_t ctx = {
   .monitored_paths_v               = NULL,                            .excluded_paths_v = NULL,
@@ -125,20 +123,11 @@ static void *event_receiver(void *NONE){
   void *EV;
 
   while (true) {
-    if (FSMON_CHAN_DEBUG_MODE) {
-      PRINT("event_receiver>  checking is_done");
-    }
     pthread_mutex_lock(ctx.mutexes[EVENTS_DONE_MUTEX]);
     bool is_done = ctx.is_done;
     pthread_mutex_unlock(ctx.mutexes[EVENTS_DONE_MUTEX]);
-    if (FSMON_CHAN_DEBUG_MODE) {
-      PRINT("event_receiver>  checked is_done:", is_done);
-    }
     if (is_done) {
       break;
-    }
-    if (FSMON_CHAN_DEBUG_MODE) {
-      PRINT("receiving on events chan.........");
     }
     chan_recv(ctx.chans[CHAN_EVENT_RECEIVED], &EV);
     if (FSMON_CHAN_DEBUG_MODE) {
@@ -158,13 +147,7 @@ static void *event_receiver(void *NONE){
   }
 
   printf("event receiver end\n");
-  if (FSMON_CHAN_DEBUG_MODE) {
-    PRINT("SENDING DONE SIGNAL");
-  }
   chan_send(ctx.chans[CHAN_EVENTS_DONE], (void *)0);
-  if (FSMON_CHAN_DEBUG_MODE) {
-    PRINT("SENT DONE SIGNAL");
-  }
   return(NULL);
 } /* event_receiver */
 
@@ -301,58 +284,25 @@ char **fsmon_monitored_paths(){
 int fsmon_monitor_stop(){
   int res = 0;
 
-  if (FSMON_CHAN_DEBUG_MODE) {
-    PRINT("stopping watchful_monitor");
-  }
   pthread_mutex_lock(ctx.mutexes[WATCHFUL_MUTEX]);
   assert(watchful_monitor_stop(ctx.watchful_monitor) == 0);
-  if (FSMON_CHAN_DEBUG_MODE) {
-    PRINT("stopped watchful_monitor");
-  }
   pthread_mutex_unlock(ctx.mutexes[WATCHFUL_MUTEX]);
 
-  if (FSMON_CHAN_DEBUG_MODE) {
-    PRINT("setting is_done to true");
-  }
   pthread_mutex_lock(ctx.mutexes[EVENTS_DONE_MUTEX]);
   ctx.is_done = true;
   pthread_mutex_unlock(ctx.mutexes[EVENTS_DONE_MUTEX]);
-  if (FSMON_CHAN_DEBUG_MODE) {
-    PRINT("set is_done to true");
-  }
 
   chan_send(ctx.chans[CHAN_EVENT_RECEIVED], (void *)NULL);
 
   void *tmp;
 
-  if (FSMON_CHAN_DEBUG_MODE) {
-    PRINT("waiting for done event");
-  }
   chan_recv(ctx.chans[CHAN_EVENTS_DONE], &tmp);
-  if (FSMON_CHAN_DEBUG_MODE) {
-    PRINT("waited for done event");
-  }
 
-  if (FSMON_CHAN_DEBUG_MODE) {
-    PRINT("closing");
-  }
   assert(close_ctx_chans() == 0);
-  if (FSMON_CHAN_DEBUG_MODE) {
-    PRINT("closed");
-  }
   assert(release_ctx_chans() == 0);
-  if (FSMON_CHAN_DEBUG_MODE) {
-    PRINT("released");
-  }
 
   pthread_mutex_lock(ctx.mutexes[WATCHFUL_MUTEX]);
-  if (FSMON_CHAN_DEBUG_MODE) {
-    PRINT("destroying watchful");
-  }
   watchful_monitor_destroy(ctx.watchful_monitor);
-  if (FSMON_CHAN_DEBUG_MODE) {
-    PRINT("destroyed watchful");
-  }
   ctx.client_event_handler = NULL;
   ctx.client_context       = NULL;
   pthread_mutex_unlock(ctx.mutexes[WATCHFUL_MUTEX]);
@@ -363,9 +313,6 @@ int fsmon_monitor_stop(){
   pthread_mutex_unlock(ctx.mutexes[STATS_MUTEX]);
 
 
-  if (FSMON_CHAN_DEBUG_MODE) {
-    PRINT("fsmon_monitor_stop OK");
-  }
   return(res);
 } /* fsmon_monitor_stop */
 
@@ -404,11 +351,11 @@ fsmon_stats_t *fsmon_stats(){
 
   pthread_mutex_lock(ctx.mutexes[STATS_MUTEX]);
   ////////////////////////////////////////////////////////////////////
-  ////////////////////////////////////////////////////////////////////
   stats->processed_events_qty = ctx.stats.processed_events_qty;
   stats->received_events_qty  = ctx.stats.received_events_qty;
   stats->duration_ms          = ctx.stats.duration_ms;
   stats->chan_selects_qty     = ctx.stats.chan_selects_qty;
+  ////////////////////////////////////////////////////////////////////
   pthread_mutex_unlock(ctx.mutexes[STATS_MUTEX]);
 
   return(stats);
@@ -426,9 +373,6 @@ int fsmon_monitor_path(const char *MONITORED_DIRECTORY){
 int fsmon_init(fs_event_handler *CLIENT_EVENT_HANDLER, const char *PATH, void *CLIENT_CONTEXT){
   bool is_locked = false;
 
-  if (FSMON_CHAN_DEBUG_MODE) {
-    PRINT("locking...");
-  }
   if (ctx.mutexes[WATCHFUL_MUTEX] != NULL) {
     is_locked = true;
     pthread_mutex_lock(ctx.mutexes[WATCHFUL_MUTEX]);

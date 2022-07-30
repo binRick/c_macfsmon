@@ -13,7 +13,6 @@ fsmon_chan_test_deps = [
   chan_dep,
   logh_dep,
   cargs_dep,
-  parson_dep,
   timestamp_dep,
   c_vector_dep,
   timestamp_dep,
