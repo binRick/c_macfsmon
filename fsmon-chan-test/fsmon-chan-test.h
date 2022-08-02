@@ -4,8 +4,8 @@
 #include "c_vector/include/vector.h"
 #include "cargs/include/cargs.h"
 #include "fsmon-chan.h"
-#include "greatest/greatest.h"
 #include "parson/parson.h"
+#include "submodules/c_deps/submodules/c_greatest/greatest/greatest.h"
 #include "tiny-regex-c/re.h"
 #include <assert.h>
 #include <stdbool.h>

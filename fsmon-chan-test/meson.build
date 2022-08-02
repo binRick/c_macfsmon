@@ -9,7 +9,7 @@ fsmon_chan_test_deps = [
   fsmon_chan_dep,
   fsevents_dep,
   fsmatch_dep,
-  greatest_dep,
+  c_greatest_dep,
   chan_dep,
   logh_dep,
   cargs_dep,

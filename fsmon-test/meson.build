@@ -9,7 +9,7 @@ fsmon_test_deps = [
   fsmon_dep,
   fsevents_dep,
   fsmatch_dep,
-  greatest_dep,
+  c_greatest_dep,
 ]
 
 if get_option('enable-binaries')

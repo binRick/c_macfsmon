@@ -49,7 +49,7 @@ pull:
 	@git pull
 nodemon:
 	$(PASSH) $(NODEMON) -I -i build \
-		-w "submodules/meson_deps/meson/deps/*/meson.build" \
+		-w "submodules/c_deps/meson/deps/*/meson.build" \
 		-w "*/*.c" \
 		-w "*/*.h" \
 		-w "fsmon*/*.c" \
