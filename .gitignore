@@ -8,3 +8,4 @@ submodules
 .legacy
 subprojects
 .make-latest-log-summary.txt
+submodules/c_deps

@@ -10,6 +10,8 @@ inc = [include_directories(
    'fsmatch',
    'fsevents',
    'submodules/c_deps/submodules/c_ansi',
+   'submodules/c_deps/submodules/c_deps',
+   'submodules/c_deps/submodules',
 )]
 osx_args = [
   '-DMACOS=1',
