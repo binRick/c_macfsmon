@@ -115,9 +115,7 @@ static ctx_t ctx = {
   },
 };
 
-
 //////////////////////////////////////////////////////////////////////////////////
-
 
 static void *event_receiver(void *NONE){
   void *EV;
@@ -150,7 +148,6 @@ static void *event_receiver(void *NONE){
   chan_send(ctx.chans[CHAN_EVENTS_DONE], (void *)0);
   return(NULL);
 } /* event_receiver */
-
 
 static int watchful_monitor_event_handler(const struct WatchfulEvent *ev, void *NONE){
   char                 event_type[64];
@@ -186,7 +183,6 @@ static int watchful_monitor_event_handler(const struct WatchfulEvent *ev, void *
   return(0);
 }
 
-
 static int init_ctx_mutexes(){
   for (int i = 0; i < MUTEXES_QTY; i++) {
     ctx.mutexes[i] = calloc(1, sizeof(pthread_mutex_t));
@@ -196,7 +192,6 @@ static int init_ctx_mutexes(){
   return(0);
 }
 
-
 static int close_ctx_chans(){
   for (int i = 0; i < CHANS_QTY; i++) {
     chan_close(ctx.chans[i]);
@@ -204,14 +199,12 @@ static int close_ctx_chans(){
   return(0);
 }
 
-
 static int release_ctx_chans(){
   for (int i = 0; i < CHANS_QTY; i++) {
     chan_dispose(ctx.chans[i]);
   }
   return(0);
 }
-
 
 static int init_ctx_chans(){
   for (int i = 0; i < CHANS_QTY; i++) {
@@ -224,7 +217,6 @@ static int init_ctx_chans(){
   return(0);
 }
 
-
 static int init_ctx_paths(){
   ctx.monitored_paths_v = vector_new();
   assert(ctx.monitored_paths_v != NULL);
@@ -232,10 +224,8 @@ static int init_ctx_paths(){
   ctx.excluded_paths_v = vector_new();
   assert(ctx.excluded_paths_v != NULL);
 
-
   return(0);
 }
-
 
 static int start_ctx_receiver_thread(){
   assert(
@@ -249,11 +239,9 @@ static int start_ctx_receiver_thread(){
   return(0);
 }
 
-
 static int free_worker(const int WORKER_INDEX){
   return(0);
 }
-
 
 static int init_ctx_threads(){
   for (int i = 0; i < THREADS_QTY; i++) {
@@ -263,23 +251,19 @@ static int init_ctx_threads(){
   return(0);
 }
 
-
 static int free_workers(){
   return(0);
 }
 
-
 size_t fsmon_monitored_paths_qty(){
   return((size_t)vector_size(ctx.monitored_paths_v));
 }
-
 
 char **fsmon_monitored_paths(){
   char **paths = NULL;
 
   return(paths);
 }
-
 
 int fsmon_monitor_stop(){
   int res = 0;
@@ -312,10 +296,8 @@ int fsmon_monitor_stop(){
   ctx.stats.duration_ms = ctx.stats.ended_ts - ctx.stats.started_ts;
   pthread_mutex_unlock(ctx.mutexes[STATS_MUTEX]);
 
-
   return(res);
 } /* fsmon_monitor_stop */
-
 
 int fsmon_monitor_start(){
   pthread_mutex_lock(ctx.mutexes[EVENTS_DONE_MUTEX]);
@@ -343,7 +325,6 @@ int fsmon_monitor_start(){
   return(0);
 }
 
-
 fsmon_stats_t *fsmon_stats(){
   fsmon_stats_t *stats = calloc(1, sizeof(fsmon_stats));
 
@@ -361,14 +342,12 @@ fsmon_stats_t *fsmon_stats(){
   return(stats);
 }
 
-
 int fsmon_monitor_path(const char *MONITORED_DIRECTORY){
   int ok = vector_push(ctx.monitored_paths_v, (void *)MONITORED_DIRECTORY);
 
   assert(ok == true);
   return(0);
 }
-
 
 int fsmon_init(fs_event_handler *CLIENT_EVENT_HANDLER, const char *PATH, void *CLIENT_CONTEXT){
   bool is_locked = false;
@@ -396,4 +375,3 @@ int fsmon_init(fs_event_handler *CLIENT_EVENT_HANDLER, const char *PATH, void *C
 
   return(0);
 }
-

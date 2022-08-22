@@ -1,8 +1,6 @@
 #include "fsmon.h"
 
-
 /* Helper Functions */
-
 
 static char *abs_path_create(const char *path) {
   char *abs_path;
@@ -20,7 +18,6 @@ static char *abs_path_create(const char *path) {
   }
   return(abs_path);
 }
-
 
 static WatchfulExcludes *excludes_create(size_t paths_len, const char **paths) {
   WatchfulExcludes *excludes = malloc(sizeof(WatchfulExcludes));
@@ -61,9 +58,7 @@ error:
   return(NULL);
 }
 
-
 /* Path Functions */
-
 
 char *watchful_path_create(const char *path, const char *prefix, bool is_dir) {
   char   *sep = "/";
@@ -97,7 +92,6 @@ char *watchful_path_create(const char *path, const char *prefix, bool is_dir) {
   return(new_path);
 }
 
-
 char *watchful_path_add_sep(char *path) {
   size_t path_len  = strlen(path);
   char   *new_path = realloc(path, sizeof(char) * (path_len + 2));
@@ -111,7 +105,6 @@ char *watchful_path_add_sep(char *path) {
   return(new_path);
 }
 
-
 bool watchful_path_is_dir(const char *path) {
   struct stat st;
   int         error = stat(path, &st);
@@ -122,14 +115,11 @@ bool watchful_path_is_dir(const char *path) {
   return(S_ISDIR(st.st_mode));
 }
 
-
 bool watchful_path_is_prefixed(const char *path, const char *prefix) {
   return(strncmp(prefix, path, strlen(prefix)) == 0);
 }
 
-
 /* Monitor Functions */
-
 
 int watchful_monitor_init(WatchfulMonitor *wm, WatchfulBackend *backend, const char *path, size_t excl_paths_len, const char **excl_paths, int events, double delay, WatchfulCallback cb, void *cb_info) {
   (void)delay;
@@ -164,7 +154,6 @@ error:
   return(1);
 }
 
-
 WatchfulMonitor *watchful_monitor_create(WatchfulBackend *backend, const char *path, size_t excl_paths_len, const char **excl_paths, int events, double delay, WatchfulCallback cb, void *cb_info) {
   if (!watchful_path_is_dir(path)) {
     return(NULL);
@@ -186,7 +175,6 @@ error:
   free(wm);
   return(NULL);
 }
-
 
 void watchful_monitor_deinit(WatchfulMonitor *wm) {
   watchful_monitor_stop(wm);
@@ -217,13 +205,11 @@ void watchful_monitor_deinit(WatchfulMonitor *wm) {
   return;
 }
 
-
 void watchful_monitor_destroy(WatchfulMonitor *wm) {
   watchful_monitor_deinit(wm);
   free(wm);
   return;
 }
-
 
 bool watchful_monitor_excludes_path(WatchfulMonitor *wm, const char *path) {
   if (wm->excludes->len == 0) {
@@ -238,7 +224,6 @@ bool watchful_monitor_excludes_path(WatchfulMonitor *wm, const char *path) {
   return(false);
 }
 
-
 int watchful_monitor_start(WatchfulMonitor *wm) {
   if (wm->is_watching) {
     return(1);
@@ -251,7 +236,6 @@ int watchful_monitor_start(WatchfulMonitor *wm) {
   wm->is_watching = true;
   return(0);
 }
-
 
 int watchful_monitor_stop(WatchfulMonitor *wm) {
   if (!wm->is_watching) {

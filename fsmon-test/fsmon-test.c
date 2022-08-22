@@ -7,7 +7,6 @@
 #include "fsmon.h"
 static int ev_callback(const struct WatchfulEvent *, void *);
 
-
 int main(int argc, const char **argv){
   assert(argc > 1);
   char       *cb_info           = "my_context";
@@ -47,7 +46,6 @@ int main(int argc, const char **argv){
   return(0);
 }
 
-
 static int ev_callback(const struct WatchfulEvent *ev, void *ctx){
   char event_type[64];
 
@@ -68,4 +66,3 @@ static int ev_callback(const struct WatchfulEvent *ev, void *ctx){
          );
   return(0);
 }
-

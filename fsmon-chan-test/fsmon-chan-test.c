@@ -25,7 +25,6 @@ struct TEST_CASE_T {
   },
 };
 
-
 void receive_event_handler(char *PATH, int EVENT_TYPE, void *CONTEXT){
   TEST_CASE_T *test_case = (TEST_CASE_T *)CONTEXT;
 
@@ -44,7 +43,6 @@ void receive_event_handler(char *PATH, int EVENT_TYPE, void *CONTEXT){
   return;
 }
 
-
 TEST t_fsmon_validate(TEST_CASE_T *test_case){
   size_t qty = fsmon_monitored_paths_qty();
 
@@ -52,7 +50,6 @@ TEST t_fsmon_validate(TEST_CASE_T *test_case){
   ASSERT_EQ(qty, TEST_CASES[0].MONITORED_PATHS_QTY);
   PASSm(test_case->MSG);
 }
-
 
 TEST t_fsmon_start(TEST_CASE_T *test_case){
   int res = -1;
@@ -62,7 +59,6 @@ TEST t_fsmon_start(TEST_CASE_T *test_case){
   sprintf(test_case->MSG, "Monitoring started on test case %s", test_case->NAME);
   PASSm(test_case->MSG);
 }
-
 
 TEST t_fsmon_watch(TEST_CASE_T *test_case){
   unsigned long long started_ts = timestamp();
@@ -96,7 +92,6 @@ TEST t_fsmon_watch(TEST_CASE_T *test_case){
   PASSm(test_case->MSG);
 }
 
-
 TEST t_fsmon_init(TEST_CASE_T *test_case){
   int res = -1;
 
@@ -126,9 +121,7 @@ SUITE(s_test_cases){
 
 GREATEST_MAIN_DEFS();
 
-
 int main(int argc, char **argv) {
   GREATEST_MAIN_BEGIN();
   RUN_SUITE(s_test_cases);
 }
-
