@@ -1,7 +1,7 @@
 #pragma once
 #include "c_string_buffer/include/stringbuffer.h"
 #include "c_stringfn/include/stringfn.h"
-#include "c_vector/include/vector.h"
+#include "c_vector/vector/vector.h"
 #include "cargs/include/cargs.h"
 #include "fsmon-chan.h"
 #include "parson/parson.h"

@@ -12,7 +12,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 //////////////////////////////////////////////
-#include "c_vector/include/vector.h"
+#include "c_vector/vector/vector.h"
 #include "chan/src/chan.h"
 #include "chan/src/queue.h"
 #include "fsmon-chan.h"
@@ -32,8 +32,6 @@ init_ctx_threads(),
 init_ctx_paths(),
 init_ctx_mutexes(),
 watchful_monitor_event_handler(const struct WatchfulEvent *ev, void *),
-free_workers(),
-free_worker(const int WORKER_INDEX),
 start_ctx_receiver_thread();
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -92,9 +90,9 @@ static ctx_t ctx = {
   .watchful_monitor_event_callback = &watchful_monitor_event_handler,
   .watchful_monitor                = NULL,
   .client_event_handler            = NULL,
-  .mutexes                         = NULL,
+  .mutexes                         = { 0 },
   .client_context                  = NULL,
-  .threads                         = NULL,
+  .threads                         = { 0 },
   .stats                           = {
     .chan_selects_qty     = 0,
     .duration_ms          = 0,
@@ -117,7 +115,7 @@ static ctx_t ctx = {
 
 //////////////////////////////////////////////////////////////////////////////////
 
-static void *event_receiver(void *NONE){
+static void *event_receiver(__attribute__((unused)) void *NONE){
   void *EV;
 
   while (true) {
@@ -149,7 +147,7 @@ static void *event_receiver(void *NONE){
   return(NULL);
 } /* event_receiver */
 
-static int watchful_monitor_event_handler(const struct WatchfulEvent *ev, void *NONE){
+static int watchful_monitor_event_handler(const struct WatchfulEvent *ev, __attribute__((unused)) void *NONE){
   char                 event_type[64];
   struct WatchfulEvent *EV_COPY = malloc(sizeof(struct WatchfulEvent));
 
@@ -239,19 +237,11 @@ static int start_ctx_receiver_thread(){
   return(0);
 }
 
-static int free_worker(const int WORKER_INDEX){
-  return(0);
-}
-
 static int init_ctx_threads(){
   for (int i = 0; i < THREADS_QTY; i++) {
     ctx.threads[i] = calloc(1, sizeof(pthread_t));
     assert(ctx.threads[i] != NULL);
   }
-  return(0);
-}
-
-static int free_workers(){
   return(0);
 }
 

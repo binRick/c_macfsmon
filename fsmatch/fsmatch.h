@@ -43,19 +43,19 @@
 extern "C" {
 #endif
 
-#define WM_MATCH 0 /* Match. */
-#define WM_NOMATCH 1 /* Match failed. */
+#define WM_MATCH          0    /* Match. */
+#define WM_NOMATCH        1    /* Match failed. */
 
-#define WM_NOESCAPE 0x01 /* Disable backslash escaping. */
-#define WM_PATHNAME 0x02 /* Slash must be matched by slash. */
-#define WM_PERIOD 0x04 /* Period must be matched by period. */
-#define WM_LEADING_DIR 0x08 /* Ignore /<tail> after Imatch. */
-#define WM_CASEFOLD 0x10 /* Case insensitive search. */
-#define WM_PREFIX_DIRS 0x20 /* Unused */
-#define WM_WILDSTAR 0x40 /* Double-asterisks ** matches slash too. */
+#define WM_NOESCAPE       0x01 /* Disable backslash escaping. */
+#define WM_PATHNAME       0x02 /* Slash must be matched by slash. */
+#define WM_PERIOD         0x04 /* Period must be matched by period. */
+#define WM_LEADING_DIR    0x08 /* Ignore /<tail> after Imatch. */
+#define WM_CASEFOLD       0x10 /* Case insensitive search. */
+#define WM_PREFIX_DIRS    0x20 /* Unused */
+#define WM_WILDSTAR       0x40 /* Double-asterisks ** matches slash too. */
 
-#define WM_IGNORECASE WM_CASEFOLD
-#define WM_FILE_NAME WM_PATHNAME
+#define WM_IGNORECASE     WM_CASEFOLD
+#define WM_FILE_NAME      WM_PATHNAME
 
 /*
  * wildmatch is an extension of function fnmatch(3) as specified in
@@ -72,7 +72,6 @@ extern "C" {
  */
 
 int wildmatch(const char *pattern, const char *string, int flags);
-
 
 #ifdef __cplusplus
 }

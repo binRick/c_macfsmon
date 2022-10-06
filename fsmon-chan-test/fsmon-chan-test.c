@@ -61,8 +61,6 @@ TEST t_fsmon_start(TEST_CASE_T *test_case){
 }
 
 TEST t_fsmon_watch(TEST_CASE_T *test_case){
-  unsigned long long started_ts = timestamp();
-
   sprintf(test_case->MSG, "Monitoring events for %dms.", test_case->MONITORED_DURATION_MS);
   printf("%s\n", test_case->MSG);
   usleep(1000 * (int)test_case->MONITORED_DURATION_MS);
